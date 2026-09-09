@@ -409,3 +409,61 @@ for (const [label, content, expected] of [
 ] as const) {
   test(`linear detector preserves ${label}`, async () => assert.equal((await inspectText(content)).exitCode, expected));
 }
+
+function signedMetadata(body: string[], headers: string[] = []) {
+  const armor = ['-----BEGIN PGP SIGNATURE-----', ...headers, '', ...body, '=AAAA', '-----END PGP SIGNATURE-----'];
+  const signature = armor.map((line, index) => (index === 0 ? 'gpgsig ' : ' ') + line).join('\n');
+  return commit().replace('\n\n', '\n' + signature + '\n\n');
+}
+for (const location of ['leading', 'embedded']) {
+  test(`public signature base64 with ${location} slashes is not a repository reference`, async () => {
+    const bytes = location === 'leading' ? Buffer.concat([Buffer.from([255, 255, 0]), Buffer.alloc(45, 66)])
+      : Buffer.concat([Buffer.alloc(6, 65), Buffer.from([255, 255, 0]), Buffer.alloc(39, 66)]);
+    const repo = repository();
+    repo.objects.get(oid(1))!.data = Buffer.from(signedMetadata([bytes.toString('base64')]));
+    const result = await checkLeaks(repo.source);
+    assert.equal(result.exitCode, 0);
+  });
+}
+test('opaque token-internal double slashes do not start a protocol-relative URL', async () => {
+  const content = Buffer.concat([Buffer.alloc(6, 65), Buffer.from([255, 255, 0]), Buffer.alloc(39, 66)]).toString('base64');
+  assert.equal((await inspectText(content)).exitCode, 0);
+});
+for (const context of ['', 'See ', 'value=', '(', '[', '"']) {
+  test(`genuine protocol-relative references remain blocked after context ${context || 'start'}`, async () => {
+    const content = [context, '/', '/', 'github.com', '/', 'synthetic-team', '/', 'confidential'].join('');
+    const result = await inspectText(content);
+    assert.equal(result.exitCode, 1);
+    assertRedacted(result, [content]);
+  });
+}
+for (const location of ['message', 'armor-header', 'invalid-armor-body']) {
+  test(`real private reference remains inspected in signed metadata ${location}`, async () => {
+    const reference = ['/', '/', 'github.com', '/', 'synthetic-team', '/', 'confidential'].join('');
+    const body = Buffer.concat([Buffer.from([255, 255, 0]), Buffer.alloc(45, 66)]).toString('base64');
+    const repo = repository();
+    let document = signedMetadata(location === 'invalid-armor-body' ? [reference] : [body], location === 'armor-header' ? ['Comment: ' + reference] : []);
+    if (location === 'message') document += reference;
+    repo.objects.get(oid(1))!.data = Buffer.from(document);
+    const result = await checkLeaks(repo.source);
+    assert.equal(result.exitCode, 1);
+    assertRedacted(result, [reference]);
+    if (location === 'message') assert.equal(result.findings.find(finding => finding.rule === 'unapproved-reference' && finding.scope === 'metadata')?.line, document.split('\n').length);
+  });
+}
+test('an incomplete signature wrapper does not conceal leading slash text', async () => {
+  const body = Buffer.concat([Buffer.from([255, 255, 0]), Buffer.alloc(45, 66)]).toString('base64');
+  const document = signedMetadata([body]).replace('-----END PGP SIGNATURE-----', 'incomplete');
+  const repo = repository();
+  repo.objects.get(oid(1))!.data = Buffer.from(document);
+  assert.equal((await checkLeaks(repo.source)).exitCode, 1);
+});
+test('signature wrapping never suppresses credential rules', async () => {
+  const body = ['AK', 'IA', 'B'.repeat(16)].join('');
+  const repo = repository();
+  repo.objects.get(oid(1))!.data = Buffer.from(signedMetadata([body]));
+  const result = await checkLeaks(repo.source);
+  assert.equal(result.exitCode, 1);
+  assert.ok(result.findings.some(finding => finding.rule === 'credential'));
+  assertRedacted(result, [body]);
+});

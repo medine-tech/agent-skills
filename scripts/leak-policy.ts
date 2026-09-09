@@ -93,7 +93,42 @@ function hasWebhook(value: string): boolean {
   return false;
 }
 
-export function inspectContent(text: string): Rule[] {
+export function protocolReferenceText(text: string): string {
+  const lines = text.split('\n');
+  let armor: { continued: boolean; bodyStarted: boolean; body: { index: number; value: string }[]; checksumIndex: number } | undefined;
+  for (const [index, raw] of lines.entries()) {
+    const line = raw.replace(/\r$/, '');
+    const begin = /^(gpgsig(?:-sha256)? )?-----BEGIN PGP SIGNATURE-----$/.exec(line);
+    if (begin) {
+      armor = { continued: Boolean(begin[1]), bodyStarted: false, body: [], checksumIndex: -1 };
+      continue;
+    }
+    if (!armor) continue;
+    if (armor.continued && !line.startsWith(' ')) { armor = undefined; continue; }
+    const value = armor.continued ? line.slice(1) : line;
+    if (value === '-----END PGP SIGNATURE-----') {
+      const encoded = armor.body.map(part => part.value).join('');
+      if (encoded && Buffer.from(encoded, 'base64').toString('base64') === encoded) {
+        for (const part of armor.body) lines[part.index] = ' '.repeat(lines[part.index]!.length);
+        if (armor.checksumIndex >= 0) lines[armor.checksumIndex] = ' '.repeat(lines[armor.checksumIndex]!.length);
+      }
+      armor = undefined;
+      continue;
+    }
+    if (!armor.bodyStarted) {
+      if (value === '') armor.bodyStarted = true;
+      else if (!/^[A-Za-z0-9-]+: ?[^\r\n]*$/.test(value)) armor = undefined;
+      continue;
+    }
+    if (armor.checksumIndex >= 0) { armor = undefined; continue; }
+    if (/^=[A-Za-z0-9+/]{4}$/.test(value)) { armor.checksumIndex = index; continue; }
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(value)) { armor = undefined; continue; }
+    armor.body.push({ index, value });
+  }
+  return lines.join('\n');
+}
+
+export function inspectContent(text: string, protocolText = protocolReferenceText(text)): Rule[] {
   const value = normalize(text);
   const rules = new Set<Rule>();
   if (knownFormats.some(pattern => pattern.test(value))) rules.add('credential');
@@ -105,7 +140,7 @@ export function inspectContent(text: string): Rule[] {
     const candidate = match[0].replace(/[.,;]+$/, '');
     if (!isApprovedUrl(candidate)) rules.add('unapproved-reference');
   }
-  for (const match of value.matchAll(/(?<![:/])\/\/[a-z0-9][^\s<>"'`\])}]+/gi)) {
+  for (const match of normalize(protocolText).matchAll(/(?<![a-z0-9_+/:.-])\/\/[a-z0-9][^\s<>"'`\])}]+/gi)) {
     const candidate = match[0].replace(/[.,;]+$/, '');
     if (!isApprovedUrl('https:' + candidate)) rules.add('unapproved-reference');
   }

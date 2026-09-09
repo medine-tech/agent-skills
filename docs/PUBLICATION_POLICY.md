@@ -66,6 +66,13 @@ Before publication, fetch and verify the exact branches and tags intended
 for release; review any external metadata separately. Ordinary contributor
 names and email addresses are not automatically classified as credentials.
 
+Protocol-relative references must start at a text token boundary. Within
+complete PGP signature armor, canonical base64 payload and checksum lines
+are encoded data for that reference matcher. Other credential rules, armor
+headers, commit messages and all surrounding metadata remain inspected.
+Malformed armor is not given this treatment. This recognizes syntax only;
+the scanner does not verify a signature or certify its authenticity.
+
 ## Results and remediation
 
 Exit codes are stable: **0** means complete and clean, **1** means blocked

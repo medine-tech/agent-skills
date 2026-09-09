@@ -1,4 +1,4 @@
-import { decodeDocument, inspectContent, inspectPath } from './leak-policy.ts';
+import { decodeDocument, inspectContent, inspectPath, protocolReferenceText } from './leak-policy.ts';
 import type { Rule } from './leak-policy.ts';
 
 export const LIMITS = { objectBytes: 2 * 1024 * 1024, totalBytes: 64 * 1024 * 1024, items: 10000, elapsedMs: 120000 } as const;
@@ -109,9 +109,10 @@ export async function checkLeaks(source: Source): Promise<Result> {
       checkTime();
       const locations = new Map<Rule, number>();
       if (rules.length) {
+        const protocolLines = protocolReferenceText(document).split('\n');
         for (const [offset, line] of document.split('\n').entries()) {
           checkTime();
-          for (const rule of inspectContent(line)) if (!locations.has(rule)) locations.set(rule, offset + 1);
+          for (const rule of inspectContent(line, protocolLines[offset]!)) if (!locations.has(rule)) locations.set(rule, offset + 1);
           checkTime();
         }
       }
