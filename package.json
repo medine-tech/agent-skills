@@ -1,0 +1,24 @@
+{
+  "name": "@medine-tech/agent-skills",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Publication safety foundation for portable agent skills",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "24.19.0",
+    "npm": "12.0.2"
+  },
+  "packageManager": "npm@12.0.2",
+  "scripts": {
+    "test": "node --test tests/leak-check.test.ts",
+    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.ts",
+    "check:leaks": "node scripts/check-leaks.ts"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.4",
+    "typescript": "5.9.3"
+  }
+}

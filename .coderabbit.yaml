@@ -1,0 +1,32 @@
+language: en-US
+reviews:
+  auto_review:
+    enabled: false
+chat:
+  auto_reply: false
+  integrations:
+    jira:
+      usage: disabled
+    linear:
+      usage: disabled
+knowledge_base:
+  opt_out: true
+  code_guidelines:
+    enabled: false
+  web_search:
+    enabled: false
+  learnings:
+    scope: local
+  issues:
+    scope: local
+  pull_requests:
+    scope: local
+  jira:
+    usage: disabled
+  linear:
+    usage: disabled
+  mcp:
+    usage: disabled
+  automatic_repository_linking: false
+  automatic_linking_mode: disabled
+  linked_repositories: []
