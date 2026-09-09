@@ -94,6 +94,10 @@ los contratos de los scripts y las pruebas.
 
 ## Revisión de publicación
 
+El [checklist de release](docs/RELEASE_CHECKLIST.md) describe el orden de
+publicación y la verificación anónima de clone, listado e instalaciones
+separadas desde directorios vacíos.
+
 Añade explícitamente los nuevos archivos públicos al índice antes del gate
 de leaks. Ejecútalo desde la raíz y sin cambios concurrentes: inspecciona el
 índice completo, el contenido actual de sus archivos, HEAD, las referencias
