@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.agents/plans/
+evidence/
+artifacts/
+reports/
+.env*
+.DS_Store
