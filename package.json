@@ -11,7 +11,7 @@
   },
   "packageManager": "npm@12.0.2",
   "scripts": {
-    "test": "node --test tests/leak-check.test.ts",
+    "test": "node --test tests/leak-check.test.ts tests/skills.test.ts",
     "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "typecheck": "tsc --noEmit",
     "build": "node scripts/build.ts",
