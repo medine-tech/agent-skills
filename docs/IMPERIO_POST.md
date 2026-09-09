@@ -1,9 +1,10 @@
 # Dos skills para revisar ideas y escribir requisitos
 
-**Borrador para revisión. Publicación pendiente.**
+**Borrador para compartir después de completar el checklist de release.
+No enviado.**
 
-Estamos preparando un repositorio pequeño de skills con licencia MIT para
-trabajar una propuesta antes de implementarla:
+Estas dos skills con licencia MIT ayudan a trabajar una propuesta antes de
+implementarla:
 
 - **grill-me** examina decisiones, compara alternativas y busca riesgos y
   casos límite. Entrega una síntesis con razones, supuestos y pendientes.
@@ -16,7 +17,7 @@ Funcionan con el contexto disponible y no exigen un repositorio, otra skill
 ni un gestor de tareas. Las integraciones son opcionales y requieren la
 autorización correspondiente.
 
-Comandos previstos para consultar e instalar desde el repositorio por HTTPS:
+Comandos para consultar e instalar desde el repositorio por HTTPS:
 
 ```sh
 npx skills add https://github.com/medine-tech/agent-skills --list
