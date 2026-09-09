@@ -1,4 +1,4 @@
-import { decodeDocument, inspectContent, inspectPath, protocolReferenceText } from './leak-policy.ts';
+import { decodeDocument, inspectContent, inspectPath, protocolReferenceText, shorthandReferenceText } from './leak-policy.ts';
 import type { Rule } from './leak-policy.ts';
 
 export const LIMITS = { objectBytes: 2 * 1024 * 1024, totalBytes: 64 * 1024 * 1024, items: 10000, elapsedMs: 120000 } as const;
@@ -99,20 +99,22 @@ export async function checkLeaks(source: Source): Promise<Result> {
     totalBytes += bytes.length;
     requireComplete(bytes.length <= LIMITS.objectBytes && totalBytes <= LIMITS.totalBytes && source.now() - started <= LIMITS.elapsedMs);
   };
-  const scan = (bytes: Buffer, scope: Scope, id: number) => {
+  const scan = (bytes: Buffer, scope: Scope, id: number, kind: 'commit' | 'text' = 'text') => {
     count(bytes);
     const document = decodeDocument(bytes);
     checkTime();
     if (document === undefined) add(['uninspectable-content'], scope, id);
     else {
-      const rules = inspectContent(document);
+      const shorthandText = shorthandReferenceText(document, kind);
+      const rules = inspectContent(document, undefined, shorthandText);
       checkTime();
       const locations = new Map<Rule, number>();
       if (rules.length) {
         const protocolLines = protocolReferenceText(document).split('\n');
+        const shorthandLines = shorthandText.split('\n');
         for (const [offset, line] of document.split('\n').entries()) {
           checkTime();
-          for (const rule of inspectContent(line, protocolLines[offset]!)) if (!locations.has(rule)) locations.set(rule, offset + 1);
+          for (const rule of inspectContent(line, protocolLines[offset]!, shorthandLines[offset]!)) if (!locations.has(rule)) locations.set(rule, offset + 1);
           checkTime();
         }
       }
@@ -144,7 +146,7 @@ export async function checkLeaks(source: Source): Promise<Result> {
     for (const [offset, id] of ids.entries()) {
       const object = objects.get(id)!;
       if (object.type === 'tree') continue;
-      scan(object.content, historyIds.includes(id) ? (object.type === 'blob' ? 'history' : 'metadata') : 'index', offset + 1);
+      scan(object.content, historyIds.includes(id) ? (object.type === 'blob' ? 'history' : 'metadata') : 'index', offset + 1, object.type === 'commit' ? 'commit' : 'text');
       if (object.type === 'blob') continue;
       const document = decodeDocument(object.content);
       requireComplete(document !== undefined);

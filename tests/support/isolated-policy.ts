@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export type LongTextFamily = 'dotted' | 'sensitive-name';
-export type LongTextEnding = 'safe' | 'assignment' | 'webhook';
+export type LongTextFamily = 'dotted' | 'sensitive-name' | 'merge-subject';
+export type LongTextEnding = 'safe' | 'assignment' | 'webhook' | 'near-miss';
 export type PolicySample = { exitCode: number; bytes: number; elapsedMs: number; rules: string[]; redacted: boolean };
 
 export function isolatedPolicy(family: LongTextFamily, ending: LongTextEnding): PolicySample | undefined {

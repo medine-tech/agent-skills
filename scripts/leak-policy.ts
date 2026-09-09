@@ -128,7 +128,35 @@ export function protocolReferenceText(text: string): string {
   return lines.join('\n');
 }
 
-export function inspectContent(text: string, protocolText = protocolReferenceText(text)): Rule[] {
+function isBranchRef(ref: string): boolean {
+  if (!ref || ref === '@' || ref.startsWith('-') || ref.endsWith('.') || ref.includes('..') || ref.includes('@{')) return false;
+  if (/[\u0000-\u0020\u007f~^:?*\[\\]/.test(ref)) return false;
+  return ref.split('/').every(part => part && !part.startsWith('.') && !part.endsWith('.lock'));
+}
+
+export function shorthandReferenceText(text: string, kind: 'commit' | 'text'): string {
+  if (kind !== 'commit') return text;
+  const separator = text.indexOf('\n\n');
+  if (separator < 0) return text;
+  const start = separator + 2;
+  const newline = text.indexOf('\n', start);
+  const subject = text.slice(start, newline < 0 ? text.length : newline);
+  const prefix = 'Merge pull request #';
+  if (!subject.startsWith(prefix)) return text;
+  const from = subject.indexOf(' from ', prefix.length);
+  if (from < 0 || !/^[1-9][0-9]*$/.test(subject.slice(prefix.length, from))) return text;
+  const attribution = subject.slice(from + 6);
+  const slash = attribution.indexOf('/');
+  if (slash < 0) return text;
+  const owner = attribution.slice(0, slash);
+  const ref = attribution.slice(slash + 1);
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/i.test(owner) || owner.includes('--') || !isBranchRef(ref)) return text;
+  const length = owner.length;
+  const position = start + from + 6;
+  return text.slice(0, position) + ' '.repeat(length) + text.slice(position + length);
+}
+
+export function inspectContent(text: string, protocolText = protocolReferenceText(text), shorthandText = text): Rule[] {
   const value = normalize(text);
   const rules = new Set<Rule>();
   if (knownFormats.some(pattern => pattern.test(value))) rules.add('credential');
@@ -154,7 +182,7 @@ export function inspectContent(text: string, protocolText = protocolReferenceTex
   for (const match of value.matchAll(/(?:\buses|"uses"|'uses')\s*\x3a\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|([^\s#\r\n]+))/gi)) {
     if (!isApprovedAction(match[1] ?? match[2] ?? match[3] ?? '')) rules.add('unapproved-reference');
   }
-  for (const match of value.matchAll(/\bmedine-tech\/([a-z0-9_.-]+)/gi)) {
+  for (const match of normalize(shorthandText).matchAll(/\bmedine-tech\/([a-z0-9_.-]+)/gi)) {
     if (!publicRepositories.has(`medine-tech/${match[1]!.toLowerCase()}`.replace(/\.git$/, ''))) rules.add('unapproved-reference');
   }
   return [...rules];

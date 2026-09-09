@@ -1,6 +1,7 @@
 import type { Source, WorktreeFile } from '../../scripts/leak-check.ts';
 
 export const Synthetic = {
+  mergeSubject: (number = 17, ref = 'topic/documentation') => ['Merge pull request #', String(number), ' from ', 'medine-tech', '/', ref].join(''),
   safeDocument: () => 'Texto público en español. Configure API_KEY en su entorno.\n',
   token() { return ['gh', 'p_', 'a'.repeat(36)].join(''); },
   unsafePath: () => ['/', 'Users', '/synthetic-person/private.txt'].join(''),
