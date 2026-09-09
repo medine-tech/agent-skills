@@ -467,3 +467,96 @@ test('signature wrapping never suppresses credential rules', async () => {
   assert.ok(result.findings.some(finding => finding.rule === 'credential'));
   assertRedacted(result, [body]);
 });
+
+for (const [number, ref] of [[17, 'topic/documentation'], [932, 'next-guide'], [1203, 'feature/docs/next.2']] as const) {
+  test(`standard merge subject ${number} treats its attribution as an owner and branch`, async () => {
+    const repo = repository();
+    repo.objects.get(oid(1))!.data = Buffer.from(commit(oid(2), Synthetic.mergeSubject(number, ref)));
+    assert.equal((await checkLeaks(repo.source)).exitCode, 0);
+  });
+}
+test('signed commit retains the same standard merge subject context', async () => {
+  const repo = repository();
+  const document = signedMetadata([Buffer.alloc(48, 65).toString('base64')]).replace('Initial text\n', Synthetic.mergeSubject() + '\n');
+  repo.objects.get(oid(1))!.data = Buffer.from(document);
+  assert.equal((await checkLeaks(repo.source)).exitCode, 0);
+});
+for (const location of ['body', 'header', 'tag', 'blob', 'ref']) {
+  test(`merge-like text in ${location} does not gain commit subject context`, async () => {
+    const repo = repository();
+    const subject = Synthetic.mergeSubject();
+    if (location === 'body') repo.objects.get(oid(1))!.data = Buffer.from(commit(oid(2), 'A normal subject\n\n' + subject));
+    if (location === 'header') repo.objects.get(oid(1))!.data = Buffer.from(commit().replace('\n\n', '\nx-note ' + subject + '\n\n'));
+    if (location === 'tag') {
+      repo.objects.set(oid(4), { type: 'tag', data: Buffer.from(`object ${oid(3)}\ntype blob\ntag release\n\n${subject}`) });
+      repo.state.ids += `${oid(4)}\n`;
+      repo.state.refs += `${oid(4)} refs/tags/release\n`;
+    }
+    if (location === 'blob') repo.objects.get(oid(3))!.data = Buffer.from(subject);
+    if (location === 'ref') repo.state.refs += `${oid(1)} refs/heads/${['medine-tech', 'topic', 'documentation'].join('/')}\n`;
+    const result = await checkLeaks(repo.source);
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.findings.some(finding => finding.rule === 'unapproved-reference'));
+    assertRedacted(result, [subject]);
+  });
+}
+const malformedMergeSubjects = [
+  'Prefix ' + Synthetic.mergeSubject(), Synthetic.mergeSubject() + ' extra', Synthetic.mergeSubject(0), Synthetic.mergeSubject(-1),
+  Synthetic.mergeSubject().replace('#17', '#017'), Synthetic.mergeSubject().replace(' from ', '  from '),
+  Synthetic.mergeSubject().replace('Merge ', '%4Derge '), Synthetic.mergeSubject().replace(' from ', ' from%20'),
+  ...['', '-branch', '/branch', 'branch/', 'branch//topic', 'branch..topic', '.hidden/topic', 'topic.lock', 'topic/@{next}', 'topic.', 'topic branch'].map(ref => Synthetic.mergeSubject(17, ref) + (!ref || ref.startsWith('/') ? [' ', 'medine-tech', '/', 'confidential'].join('') : '')),
+];
+for (const [index, subject] of malformedMergeSubjects.entries()) {
+  test(`near-miss merge subject ${index + 1} keeps repository policy`, async () => {
+    const repo = repository();
+    repo.objects.get(oid(1))!.data = Buffer.from(commit(oid(2), subject));
+    const result = await checkLeaks(repo.source);
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.findings.some(finding => finding.rule === 'unapproved-reference'));
+    assertRedacted(result, [subject]);
+  });
+}
+for (const [label, subject, rule] of [
+  ['credential in branch', Synthetic.mergeSubject(17, 'topic/' + Synthetic.token()), 'credential'],
+  ['credential beside subject', Synthetic.mergeSubject() + ' ' + Synthetic.token(), 'credential'],
+  ['local path in branch', Synthetic.mergeSubject(17, 'topic' + Synthetic.unsafePath()), 'local-path'],
+  ['explicit URL beside subject', Synthetic.mergeSubject() + ' ' + Synthetic.privateRepo(), 'unapproved-reference'],
+  ['nested private reference in branch', Synthetic.mergeSubject(17, ['topic', 'medine-tech', 'confidential'].join('/')), 'unapproved-reference'],
+] as const) {
+  test(`merge subject classification does not suppress ${label}`, async () => {
+    const repo = repository();
+    repo.objects.get(oid(1))!.data = Buffer.from(commit(oid(2), subject));
+    const result = await checkLeaks(repo.source);
+    assert.equal(result.exitCode, 1);
+    assert.ok(result.findings.some(finding => finding.rule === rule));
+    assertRedacted(result, [subject, Synthetic.token(), Synthetic.unsafePath()]);
+  });
+}
+test('a private reference after a valid merge subject retains its original line', async () => {
+  const repo = repository();
+  const reference = ['medine-tech', '/', 'confidential'].join('');
+  const document = commit(oid(2), Synthetic.mergeSubject() + '\n\n' + reference);
+  repo.objects.get(oid(1))!.data = Buffer.from(document);
+  const result = await checkLeaks(repo.source);
+  const finding = result.findings.find(item => item.rule === 'unapproved-reference' && item.scope === 'metadata');
+  assert.equal(result.exitCode, 1);
+  assert.equal(finding?.line, document.trimEnd().split('\n').length);
+  assertRedacted(result, [reference]);
+});
+for (const ending of ['safe', 'near-miss'] as const) {
+  test(`isolated long merge subject ${ending} remains bounded`, context => {
+    const sample = isolatedPolicy('merge-subject', ending);
+    assert.ok(sample, 'isolated scanner did not complete within the execution bound');
+    assert.equal(sample.bytes, 2 * 1024 * 1024);
+    assert.equal(sample.exitCode, ending === 'safe' ? 0 : 1);
+    assert.ok(sample.redacted);
+    context.diagnostic(JSON.stringify({ family: 'merge-subject', ending, bytes: sample.bytes, elapsedMs: sample.elapsedMs }));
+  });
+}
+for (const ref of [['medine-tech', 'confidential'].join('/'), ['topic', '%2f', 'medine-tech', '%2f', 'confidential'].join('')]) {
+  test(`branch attribution preserves nested reference in first segment variant ${ref.includes('%') ? 'encoded' : 'plain'}`, async () => {
+    const repo = repository();
+    repo.objects.get(oid(1))!.data = Buffer.from(commit(oid(2), Synthetic.mergeSubject(17, ref)));
+    assert.equal((await checkLeaks(repo.source)).exitCode, 1);
+  });
+}

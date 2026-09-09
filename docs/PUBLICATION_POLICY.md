@@ -73,6 +73,14 @@ headers, commit messages and all surrounding metadata remain inspected.
 Malformed armor is not given this treatment. This recognizes syntax only;
 the scanner does not verify a signature or certify its authenticity.
 
+In the initial subject of a commit object only, the complete standard
+`Merge pull request #N from owner/ref` syntax identifies an owner and branch.
+After validating that syntax, the ambiguous attribution prefix is classified
+for the shorthand repository rule. Every other detector reads the original
+text, and nested references remain inspected. Headers, message bodies, tags,
+files and ref names do not receive this context. Malformed subjects follow
+the ordinary rules; the syntax does not establish authenticity.
+
 ## Results and remediation
 
 Exit codes are stable: **0** means complete and clean, **1** means blocked
