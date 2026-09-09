@@ -56,12 +56,12 @@ for (const [index, content] of badContents.entries()) {
     assertRedacted(result, [content, Synthetic.unsafePath()]);
   });
 }
-for (const safe of [Synthetic.safeDocument(), 'API_KEY\nTOKEN\n${API_KEY}', 'API_KEY=""', ['persist-', 'credentials: false'].join(''),
+for (const [index, safe] of [Synthetic.safeDocument(), 'API_KEY\nTOKEN\n${API_KEY}', 'API_KEY=""', ['persist-', 'credentials: false'].join(''),
   'https://github.com/medine-tech/agent-skills', 'https://github.com/medine-tech/agent-skills.git',
   'https://github.com/medine-tech/agent-skills/tree/main/docs',
   'https://GITHUB.COM/MEDINE-TECH/AGENT-SKILLS',
-  'https://registry.npmjs.org/typescript/-/typescript-7.0.2.tgz']) {
-  test(`safe content variant ${safe.length} is accepted`, async () => assert.equal((await inspectText(safe)).exitCode, 0));
+  'https://registry.npmjs.org/typescript/-/typescript-7.0.2.tgz'].entries()) {
+  test(`safe content variant ${index + 1} (${safe.length} characters) is accepted`, async () => assert.equal((await inspectText(safe)).exitCode, 0));
 }
 
 test('deleted historical secret remains blocked', async () => {
@@ -139,8 +139,8 @@ for (const [index, mutate] of failureCases.entries()) {
     assertRedacted(result, [Synthetic.unsafePath(), 'malformed', 'truncated', 'ambiguous']);
   });
 }
-for (const bytes of [Buffer.from([0xc3, 0x28]), Buffer.from([0, 1, 2]), Buffer.from([1, 2, 3]), Buffer.from(['version https:', ['/', '/', 'git-lfs.'].join(''), 'github.com', '/spec/v1\noid sha256:abcd\nsize 1'].join(''))]) {
-  test(`uninspectable blob ${bytes.length} is blocked`, async () => assert.equal((await inspectText(bytes)).exitCode, 1));
+for (const [index, bytes] of [Buffer.from([0xc3, 0x28]), Buffer.from([0, 1, 2]), Buffer.from([1, 2, 3]), Buffer.from(['version https:', ['/', '/', 'git-lfs.'].join(''), 'github.com', '/spec/v1\noid sha256:abcd\nsize 1'].join(''))].entries()) {
+  test(`uninspectable blob ${index + 1} (${bytes.length} bytes) is blocked`, async () => assert.equal((await inspectText(bytes)).exitCode, 1));
 }
 
 test('safe relative canonical alias is checked without following it', async () => {
