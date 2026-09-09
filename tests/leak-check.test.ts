@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { isolatedPolicy } from './support/isolated-policy.ts';
 import { checkLeaks, renderResult } from '../scripts/leak-check.ts';
 import { Synthetic, commit, entry, indexed, oid, repository } from './support/synthetic.ts';
 
@@ -380,4 +381,31 @@ for (const content of ['docs/guide.md', 'contributor@example.org', ['@types', '/
   test(`non-action noise ${content.length} remains accepted`, async () => {
     assert.equal((await inspectText(content)).exitCode, 0);
   });
+}
+
+for (const family of ['dotted', 'sensitive-name'] as const) {
+  for (const ending of ['safe', 'assignment', 'webhook'] as const) {
+    test(`isolated scanner completes permitted long ${family} text with ${ending} ending`, context => {
+      const sample = isolatedPolicy(family, ending);
+      assert.ok(sample, 'isolated scanner did not complete within the execution bound');
+      assert.equal(sample.bytes, 2 * 1024 * 1024);
+      assert.equal(sample.exitCode, ending === 'safe' ? 0 : 1);
+      if (ending !== 'safe') assert.ok(sample.rules.includes(ending === 'assignment' ? 'sensitive-assignment' : 'webhook'));
+      assert.ok(sample.redacted);
+      context.diagnostic(JSON.stringify({ family, ending, bytes: sample.bytes, elapsedMs: sample.elapsedMs }));
+    });
+  }
+}
+for (const [label, content, expected] of [
+  ['long safe identifier', 'NAME_'.repeat(1000), 0],
+  ['multiline environment reference', ['TOKEN', ' =\n', '${TOKEN}'].join(''), 0],
+  ['quoted sensitive key and value', ['"MY_', 'TOKEN', '": "', 'synthetic-value', '"'].join(''), 1],
+  ['sensitive hyphenated name', ['MY_API', '-KEY', ' = ', 'synthetic-value'].join(''), 1],
+  ['webhook prefix without host boundary', ['ahooks.', 'example', '/'].join(''), 0],
+  ['embedded hook host boundary', ['prefix!hooks.', 'example', '/'].join(''), 1],
+  ['hook host with invalid suffix', ['hooks.', 'example', '?/'].join(''), 0],
+  ['webhook path with host prefix', ['service', '/api/', 'webhooks/'].join(''), 1],
+  ['webhook path without host prefix', ['/', 'api/', 'webhooks/'].join(''), 0],
+] as const) {
+  test(`linear detector preserves ${label}`, async () => assert.equal((await inspectText(content)).exitCode, expected));
 }

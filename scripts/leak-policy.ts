@@ -52,17 +52,54 @@ function isApprovedAction(reference: string): boolean {
   return /^[a-z0-9_.-]+\/[a-z0-9_.-]+(?:\/[a-z0-9_.-]+)*(?:@[^\s"'#]+)?$/i.test(reference) && publicRepositories.has(repository);
 }
 
+function hasSensitiveAssignment(value: string): boolean {
+  const identifiers = /[A-Z0-9_-]+/gi;
+  let identifier: RegExpExecArray | null;
+  while ((identifier = identifiers.exec(value)) !== null) {
+    if (!/(?:API[_-]?KEY|ACCESS[_-]?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)/i.test(identifier[0])) continue;
+    let cursor = identifiers.lastIndex;
+    if (value[cursor] === '"' || value[cursor] === "'") cursor++;
+    while (cursor < value.length && /\s/.test(value[cursor]!)) cursor++;
+    if (value[cursor] !== ':' && value[cursor] !== '=') continue;
+    cursor++;
+    while (cursor < value.length && /\s/.test(value[cursor]!)) cursor++;
+    const isQuoted = value[cursor] === '"' || value[cursor] === "'";
+    if (isQuoted) cursor++;
+    const start = cursor;
+    const delimiter = isQuoted ? /["'\r\n]/ : /[\s,;"']/;
+    while (cursor < value.length && !delimiter.test(value[cursor]!)) cursor++;
+    const assigned = value.slice(start, cursor);
+    identifiers.lastIndex = cursor;
+    if (assigned && !/^(?:false|true|null)$/.test(assigned) && !/^\$(?:\{[A-Z_][A-Z0-9_]*\}|[A-Z_][A-Z0-9_]*)$/i.test(assigned)) return true;
+  }
+  return false;
+}
+
+function hasWebhook(value: string): boolean {
+  const lower = value.toLowerCase();
+  for (const segment of lower.matchAll(/[^\s/]+/g)) {
+    const end = segment.index + segment[0].length;
+    if ((lower.startsWith(['/api/', 'webhooks/'].join(''), end) || lower.startsWith(['/web', 'hook/'].join(''), end) || lower.startsWith(['/web', 'hook?'].join(''), end)) && /\w/.test(segment[0])) return true;
+  }
+  for (const hostname of lower.matchAll(/[a-z0-9.-]+/g)) {
+    if (lower[hostname.index + hostname[0].length] !== '/') continue;
+    let cursor = hostname[0].indexOf('hooks.');
+    while (cursor !== -1) {
+      const before = lower[hostname.index + cursor - 1];
+      if ((!before || !/\w/.test(before)) && cursor + 6 < hostname[0].length) return true;
+      cursor = hostname[0].indexOf('hooks.', cursor + 6);
+    }
+  }
+  return false;
+}
+
 export function inspectContent(text: string): Rule[] {
   const value = normalize(text);
   const rules = new Set<Rule>();
   if (knownFormats.some(pattern => pattern.test(value))) rules.add('credential');
-  const assignments = /\b(?:[A-Z0-9_]*(?:API[_-]?KEY|ACCESS[_-]?KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*)["']?\s*[:=]\s*(?:["']([^"'\r\n]*)["']|([^\s,;\r\n"']+))/gi;
-  for (const match of value.matchAll(assignments)) {
-    const assigned = match[1] ?? match[2] ?? '';
-    if (assigned && !/^(?:false|true|null)$/.test(assigned) && !/^\$(?:\{[A-Z_][A-Z0-9_]*\}|[A-Z_][A-Z0-9_]*)$/i.test(assigned)) rules.add('sensitive-assignment');
-  }
+  if (hasSensitiveAssignment(value)) rules.add('sensitive-assignment');
   if (/(?:https?|ssh):\/\/[^\s/<>'"`]*@/i.test(value)) rules.add('authenticated-url');
-  if (/\b(?:hooks\.[a-z0-9.-]+\/|[^\s/]+\/api\/webhooks\/|[^\s/]+\/webhook[/?])/i.test(value)) rules.add('webhook');
+  if (hasWebhook(value)) rules.add('webhook');
   if (/(?:\/(?:Users|home|root|private|tmp|var\/folders)\/|\b[A-Z]:[\\/]|\\\\[a-z0-9_.-]+\\|\bfile:\/\/)/i.test(value)) rules.add('local-path');
   for (const match of value.matchAll(/\b(?:https?|ssh|git|file):\/\/[^\s<>"'`\])}]+/gi)) {
     const candidate = match[0].replace(/[.,;]+$/, '');

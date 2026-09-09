@@ -19,6 +19,11 @@ and parsers with mocked Git/filesystem capabilities and deterministic
 synthetic data assembled in memory. Never exempt tests, scripts or lockfiles
 from the leak policy. No literal credentials or sensitive paths in fixtures.
 
+Treat scanned text as untrusted input and assess work against input bytes.
+When changing detectors, test long near misses as well as matches. Clock
+checks cannot interrupt a synchronous regular expression; use bounded
+algorithms and isolate adversarial regression tests with an external timeout.
+
 Run `npm test`, `npm run lint`, `npm run typecheck`, `npm run build` and
 `npm run check:leaks`. Stage intended new public files explicitly before the
 leak gate; never stage private plans or evidence. Do not weaken checks,

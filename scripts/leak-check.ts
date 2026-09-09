@@ -91,6 +91,7 @@ export async function checkLeaks(source: Source): Promise<Result> {
   let inspected = 0;
   let totalBytes = 0;
   const started = source.now();
+  const checkTime = () => requireComplete(source.now() - started <= LIMITS.elapsedMs);
   const add = (rules: Finding['rule'][], scope: Scope, id: number, line?: number) => {
     for (const rule of rules) findings.push({ rule, scope, id, ...(line === undefined ? {} : { line }) });
   };
@@ -101,17 +102,22 @@ export async function checkLeaks(source: Source): Promise<Result> {
   const scan = (bytes: Buffer, scope: Scope, id: number) => {
     count(bytes);
     const document = decodeDocument(bytes);
+    checkTime();
     if (document === undefined) add(['uninspectable-content'], scope, id);
     else {
       const rules = inspectContent(document);
+      checkTime();
       const locations = new Map<Rule, number>();
       if (rules.length) {
         for (const [offset, line] of document.split('\n').entries()) {
+          checkTime();
           for (const rule of inspectContent(line)) if (!locations.has(rule)) locations.set(rule, offset + 1);
+          checkTime();
         }
       }
       for (const rule of rules) add([rule], scope, id, locations.get(rule));
     }
+    checkTime();
     inspected++;
   };
   try {
