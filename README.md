@@ -1,6 +1,7 @@
 # Agent Skills
 
-Dos skills para revisar propuestas y convertir decisiones en requisitos,
+Cinco skills para revisar ideas, definir requisitos y trabajar conversaciones
+comerciales con evidencia,
 con licencia [MIT](LICENSE). Cada una contiene sus instrucciones completas
 en un único `SKILL.md` y puede usarse por separado.
 
@@ -8,9 +9,12 @@ en un único `SKILL.md` y puede usarse por separado.
 | --- | --- |
 | [grill-me](skills/grill-me/SKILL.md) | Cuestionar un diseño, comparar alternativas y explorar riesgos antes de implementar. |
 | [write-a-prd](skills/write-a-prd/SKILL.md) | Redactar un PRD en Markdown con alcance, requisitos y criterios de aceptación verificables. |
+| [sales-coach](skills/sales-coach/SKILL.md) | Practicar conversaciones comerciales por turnos y recibir feedback sobre conductas observadas. |
+| [b2b-sales-operating-system](skills/b2b-sales-operating-system/SKILL.md) | Calificar oportunidades, organizar el pipeline y preparar próximos pasos comerciales con evidencia. |
+| [b2b-proposal](skills/b2b-proposal/SKILL.md) | Redactar propuestas para compradores con alcance, inversión, condiciones y pendientes explícitos. |
 
 Puedes usar el resumen de `grill-me` como entrada de `write-a-prd`, o empezar
-directamente con cualquiera de las dos. No requieren otra skill, una base de
+directamente con cualquiera de las cinco. No requieren otra skill, una base de
 conocimiento, un repositorio ni una integración concreta. Cuando hay un
 proyecto, consultan sus instrucciones; cuando no lo hay, trabajan con el
 contexto proporcionado.
@@ -23,6 +27,9 @@ Los comandos de descubrimiento e instalación por HTTPS son:
 npx skills add https://github.com/medine-tech/agent-skills --list
 npx skills add https://github.com/medine-tech/agent-skills --skill grill-me
 npx skills add https://github.com/medine-tech/agent-skills --skill write-a-prd
+npx skills add https://github.com/medine-tech/agent-skills --skill sales-coach
+npx skills add https://github.com/medine-tech/agent-skills --skill b2b-sales-operating-system
+npx skills add https://github.com/medine-tech/agent-skills --skill b2b-proposal
 ```
 
 ## Ejemplos de uso
@@ -51,6 +58,27 @@ que utilices.
 > ni recomendaciones. Redacta el PRD en Markdown con criterios verificables.
 > Trabaja autónomamente y deja como pendientes los datos que no estén definidos.
 
+**Primera conversación comercial:**
+
+> Usa sales-coach para practicar mi primera visita a un taller ficticio. No
+> tengo una reunión acordada. Ofrezco ayudar a ordenar solicitudes, sin prometer
+> ahorros ni integraciones. Ensayemos por texto: interpreta a quien atiende y
+> espera mis respuestas. Después dame feedback sobre lo que observaste.
+
+**Revisión de oportunidades:**
+
+> Usa b2b-sales-operating-system con estas notas ficticias: una cuenta pidió
+> información, otra rechazó el seguimiento y otra quiere evaluar una demo.
+> Propón estados y próximos pasos basados en evidencia, sin enviar mensajes
+> ni registrar compromisos que nadie haya aceptado.
+
+**Propuesta con incertidumbres:**
+
+> Usa b2b-proposal para preparar una propuesta breve para un taller ficticio.
+> Busca organizar solicitudes; hay una demo, pero la importación está pendiente
+> de validar. Aún no hay precio ni fecha aprobados. Redacta para el comprador
+> conservando esos pendientes y las condiciones para decidir.
+
 Las skills responden en el idioma del usuario. En una sesión interactiva,
 las preguntas se concentran en decisiones abiertas. Con autonomía ya
 autorizada, avanzan sobre lo delegado y distinguen sus decisiones de los
@@ -59,12 +87,18 @@ integración opcional no está disponible o falla.
 
 ## Alcance de esta versión
 
-La v1 se limita al análisis de diseño y la redacción de requisitos. Quedan
-fuera la implementación, la orquestación de agentes, las operaciones de
-infraestructura y la automatización obligatoria de gestores de tareas.
-Redactar o analizar no concede permiso para publicar, enviar mensajes ni
-crear tareas. Las integraciones requieren herramienta disponible y
-autorización aplicable a la operación y al destino.
+El alcance incluye análisis de diseño, requisitos, entrenamiento y documentación
+comercial. Quedan fuera la implementación y las operaciones de infraestructura.
+Los skills comerciales pueden usarse con notas y texto: navegación, voz,
+almacenamiento, CRM y exportación a otros formatos son opcionales. Preparar una
+propuesta o practicar no concede permiso para contactar cuentas, publicar,
+modificar registros o asumir compromisos. Cada operación externa requiere una
+herramienta disponible y autorización aplicable a la operación y al destino.
+
+El entrenador no mantiene un historial automático ni certifica capacidad de
+venta. Distingue prácticas con ayuda, simulaciones y actuaciones reales; solo
+evalúa lo observable. Los documentos comerciales conservan incertidumbres,
+precios autorizados y límites de entrega, sin fabricar pruebas ni urgencia.
 
 La [nota de cambios](CHANGELOG.md) describe la adaptación portable.
 

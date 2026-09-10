@@ -17,8 +17,8 @@ contenido versionado.
   antes de cambiar la visibilidad del repositorio.
 - [ ] Confirmar que el repositorio es público y conserva la licencia MIT.
 - [ ] Ejecutar la verificación anónima siguiente. El SHA clonado debe ser
-  el commit revisado; el listado debe contener exactamente `grill-me` y
-  `write-a-prd`, y ambas instalaciones separadas deben coincidir con él.
+  el commit revisado; el listado debe contener exactamente los cinco skills
+  del inventario siguiente, y cada instalación separada debe coincidir con él.
 - [ ] Conservar versiones, salidas, códigos de salida, SHA y comparaciones;
   reconciliar los criterios de aceptación y sus evidencias en el tracker
   o registro privado de la entrega.
@@ -51,7 +51,6 @@ Las instalaciones usan el alcance de proyecto y copias regulares, sin `--global`
   set -eu
   release_check_root=$(mktemp -d)
   mkdir "$release_check_root/clone" "$release_check_root/list" \
-    "$release_check_root/grill" "$release_check_root/prd" \
     "$release_check_root/gh" "$release_check_root/config" \
     "$release_check_root/state" "$release_check_root/cache"
   : > "$release_check_root/npm-user.conf"
@@ -83,27 +82,25 @@ Las instalaciones usan el alcance de proyecto y copias regulares, sin `--global`
   cd "$release_check_root/list"
   release_run npx --yes skills@1.5.25 add https://github.com/medine-tech/agent-skills --list
 
-  cd "$release_check_root/grill"
-  release_run npx --yes skills@1.5.25 add https://github.com/medine-tech/agent-skills --skill grill-me --agent codex --yes --copy
-  test -f .agents/skills/grill-me/SKILL.md
-  test ! -L .agents/skills/grill-me/SKILL.md
-  test ! -L .agents/skills/grill-me
-  test -f skills-lock.json
-  test ! -L skills-lock.json
-  test ! -e .agents/skills/write-a-prd
-  test ! -L .agents/skills/write-a-prd
-  cmp "$release_check_root/clone/skills/grill-me/SKILL.md" .agents/skills/grill-me/SKILL.md
-
-  cd "$release_check_root/prd"
-  release_run npx --yes skills@1.5.25 add https://github.com/medine-tech/agent-skills --skill write-a-prd --agent codex --yes --copy
-  test -f .agents/skills/write-a-prd/SKILL.md
-  test ! -L .agents/skills/write-a-prd/SKILL.md
-  test ! -L .agents/skills/write-a-prd
-  test -f skills-lock.json
-  test ! -L skills-lock.json
-  test ! -e .agents/skills/grill-me
-  test ! -L .agents/skills/grill-me
-  cmp "$release_check_root/clone/skills/write-a-prd/SKILL.md" .agents/skills/write-a-prd/SKILL.md
+  for release_skill in b2b-proposal b2b-sales-operating-system grill-me sales-coach write-a-prd; do
+    mkdir "$release_check_root/$release_skill"
+    cd "$release_check_root/$release_skill"
+    release_run npx --yes skills@1.5.25 add https://github.com/medine-tech/agent-skills --skill "$release_skill" --agent codex --yes --copy
+    test -f ".agents/skills/$release_skill/SKILL.md"
+    test ! -L .agents
+    test ! -L .agents/skills
+    test ! -L ".agents/skills/$release_skill"
+    test ! -L ".agents/skills/$release_skill/SKILL.md"
+    test -f skills-lock.json
+    test ! -L skills-lock.json
+    set -- .agents/skills/*
+    test "$#" -eq 1
+    test "$1" = ".agents/skills/$release_skill"
+    set -- ".agents/skills/$release_skill/"*
+    test "$#" -eq 1
+    test "$1" = ".agents/skills/$release_skill/SKILL.md"
+    cmp "$release_check_root/clone/skills/$release_skill/SKILL.md" ".agents/skills/$release_skill/SKILL.md"
+  done
 )
 ```
 

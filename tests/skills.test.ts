@@ -2,11 +2,17 @@ import assert from 'node:assert/strict';
 import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const skillNames = ['grill-me', 'write-a-prd'];
+const skillNames = [
+  'b2b-proposal',
+  'b2b-sales-operating-system',
+  'grill-me',
+  'sales-coach',
+  'write-a-prd',
+];
 const repositoryRoot = new URL('../', import.meta.url);
 const skillsDirectory = new URL('skills', repositoryRoot);
 
-test('the skills inventory contains exactly the two distributed leaves', () => {
+test('the skills inventory contains exactly the distributed leaves', () => {
   assert.ok(lstatSync(skillsDirectory).isDirectory());
   assert.deepEqual(readdirSync(skillsDirectory).sort(), skillNames);
 });
@@ -45,8 +51,7 @@ test('README contains the public HTTPS discovery and installation commands', () 
   const readme = readFileSync(new URL('README.md', repositoryRoot), 'utf8');
   const commands = [
     'npx skills add https://github.com/medine-tech/agent-skills --list',
-    'npx skills add https://github.com/medine-tech/agent-skills --skill grill-me',
-    'npx skills add https://github.com/medine-tech/agent-skills --skill write-a-prd',
+    ...skillNames.map(name => `npx skills add https://github.com/medine-tech/agent-skills --skill ${name}`),
   ];
   for (const command of commands) assert.ok(readme.includes(command), `missing command: ${command}`);
 });
